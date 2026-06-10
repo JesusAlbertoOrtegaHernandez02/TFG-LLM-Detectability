@@ -87,18 +87,6 @@ En esta fase se comparan los textos humanos y los textos generados por las disti
 
 El notebook genera tablas resumen, comparaciones mediante Cohen's d y Kolmogorov-Smirnov, gráficas de evolución de métricas y análisis de detectabilidad por iteración.
 
-### `figures/`
-
-Carpeta destinada a almacenar imágenes o diagramas utilizados en la documentación del repositorio.
-
-Por ejemplo, esquemas del pipeline experimental o explicaciones visuales del funcionamiento de LoRA.
-
-### `docs/`
-
-Carpeta destinada a documentación adicional del proyecto.
-
-Puede incluir memoria, anexos, referencias, capturas o material complementario relacionado con el TFG.
-
 ## Pipeline experimental
 
 El flujo general del proyecto puede resumirse así:
