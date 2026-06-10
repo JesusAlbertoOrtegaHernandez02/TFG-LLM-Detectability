@@ -1,25 +1,25 @@
+# Instalación de dependencias necesarias en Google Colab
 !pip install -q transformers peft bitsandbytes datasets accelerate
 
 import os
 import re
+
 import torch
-import pandas as pd
-from datasets import Dataset, load_dataset, concatenate_datasets
+from datasets import load_dataset, concatenate_datasets
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     BitsAndBytesConfig,
     TrainingArguments,
     Trainer,
+    DataCollatorForLanguageModeling,
     set_seed,
 )
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-    PeftModel,
-)
+from peft import PeftModel
+from google.colab import drive
 
+
+# Fijación de semilla para facilitar la reproducibilidad.
 set_seed(42)
 
 print("GPU disponible:", torch.cuda.is_available())
@@ -27,9 +27,9 @@ if torch.cuda.is_available():
     print("GPU:", torch.cuda.get_device_name(0))
     print("VRAM (GB):", torch.cuda.get_device_properties(0).total_memory / 1e9)
 
-from google.colab import drive
 drive.mount("/content/drive", force_remount=True)
 
+# Rutas principales del proyecto en Google Drive.
 BASE_PATH = "/content/drive/MyDrive/TFG ULTIMO"
 MODELS_PATH = f"{BASE_PATH}/models"
 DATA_REF_PATH = f"{BASE_PATH}/data_reference"
@@ -37,9 +37,10 @@ GENERATED_PATH = f"{BASE_PATH}/generated_texts"
 
 os.makedirs(MODELS_PATH, exist_ok=True)
 
-from datasets import load_dataset
-import re
 
+
+# Textos seleccionados en la iteración anterior.
+# En este caso, se usan los textos de iter4 para entrenar iter5.
 SELECTED_JSONL = f"{GENERATED_PATH}/selected_iter4_for_iter5.jsonl"
 
 ds = load_dataset("json", data_files=SELECTED_JSONL, split="train")
@@ -52,7 +53,7 @@ print("Contienen @xmath:",
 print("\nPrimer ejemplo:\n")
 print(ds[0]["text"])
 
-from datasets import load_dataset
+
 
 SELECTED_JSONL = f"{GENERATED_PATH}/selected_iter4_for_iter5.jsonl"
 selected_ds = load_dataset("json", data_files=SELECTED_JSONL, split="train")
@@ -89,6 +90,7 @@ print("Proporción human:", len(human_sample) / len(mixed))
 mixed.to_json(MIXED_OUT_JSONL, orient="records", lines=True, force_ascii=False)
 print("Dataset mixto guardado en:", MIXED_OUT_JSONL)
 
+# Carga del modelo base cuantizado en 4 bits para reducir el uso de memoria GPU.
 model_id = "mistralai/Mistral-7B-v0.1"
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -152,29 +154,9 @@ def tokenize_fn(example):
 train_tok = train_ds.map(tokenize_fn, remove_columns=train_ds.column_names)
 eval_tok  = eval_ds.map(tokenize_fn, remove_columns=eval_ds.column_names)
 
-"""MAX_LEN = 512
 
-def tokenize_fn(example):
-    tokens = tokenizer(
-        example["text"],
-        truncation=True,
-        padding="max_length",
-        max_length=MAX_LEN
-    )
-    tokens["labels"] = tokens["input_ids"].copy()
-    return tokens
 
-split = mixed.train_test_split(test_size=0.2, seed=42)
-train_ds = split["train"]
-eval_ds = split["test"]
 
-train_tok = train_ds.map(tokenize_fn, batched=True, remove_columns=["text"])
-eval_tok  = eval_ds.map(tokenize_fn, batched=True, remove_columns=["text"])
-
-print("Train:", len(train_tok), "Eval:", len(eval_tok))
-"""
-
-from transformers import DataCollatorForLanguageModeling
 
 data_collator = DataCollatorForLanguageModeling(
     tokenizer=tokenizer,
